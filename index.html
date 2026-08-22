@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>玄空飛星與八宅排盤工具</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    body { background-color: #f2f2f7; color: #1c1c1e; margin: 0; padding: 16px; display: flex; flex-direction: column; align-items: center; }
+    .card { background: #ffffff; border-radius: 12px; padding: 16px; width: 100%; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 16px; }
+    h2 { font-size: 1.2rem; margin-top: 0; text-align: center; color: #2c3e50; }
+    .form-group { margin-bottom: 12px; }
+    label { font-size: 0.85rem; font-weight: bold; color: #666; display: block; margin-bottom: 4px; }
+    input, select, button { width: 100%; padding: 10px; font-size: 1rem; border-radius: 8px; border: 1px solid #d1d1d6; outline: none; }
+    button { background-color: #007aff; color: white; border: none; font-weight: bold; margin-top: 8px; cursor: pointer; }
+    button:active { background-color: #0056b3; }
+    
+    .info-bar { background: #e5f1ff; border-radius: 8px; padding: 10px; font-size: 0.9rem; text-align: center; margin-top: 12px; }
+    
+    /* 九宮格佈局 */
+    .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; max-width: 360px; aspect-ratio: 1; margin: 12px auto 0; }
+    .cell { background: #fff; border: 1px solid #c7c7cc; border-radius: 6px; display: flex; flex-direction: column; justify-content: space-between; padding: 6px; position: relative; }
+    .cell-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 1rem; }
+    .star-mountain { color: #d9534f; } /* 山星（左上，紅） */
+    .star-facing { color: #0275d8; }  /* 向星（右上，藍） */
+    .cell-center { text-align: center; font-size: 0.75rem; color: #28a745; font-weight: bold; margin: 2px 0; } /* 八宅吉凶 */
+    .cell-footer { display: flex; justify-content: space-between; align-items: flex-end; font-size: 0.75rem; color: #8e8e93; }
+    .star-base { font-weight: bold; color: #333; font-size: 0.85rem; } /* 運星 */
+    
+    /* 吉凶標籤顏色 */
+    .ji { color: #28a745; }
+    .xiong { color: #dc3545; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>玄空飛星 & 八宅排盤</h2>
+    <div class="form-group">
+      <label for="degree">坐向角度（向首角度 0° - 359.9°）：</label>
+      <input type="number" id="degree" min="0" max="359.9" step="0.1" value="180" placeholder="例：180（坐北朝南）">
+    </div>
+    <div class="form-group">
+      <label for="yun">三元九運：</label>
+      <select id="yun">
+        <option value="9" selected>九運 (2024 - 2043)</option>
+        <option value="8">八運 (2004 - 2023)</option>
+        <option value="7">七運 (1984 - 2003)</option>
+      </select>
+    </div>
+    <button onclick="processFengShui()">即時計算排盤</button>
+  </div>
+
+  <div class="card" id="resultCard" style="display: none;">
+    <div class="info-bar" id="summaryText"></div>
+    <!-- 九宮格 -->
+    <div class="grid-container" id="gridBoard"></div>
+  </div>
+
+<script>
+// 1. 二十四山基礎數據（角度、所屬卦位、天元/地元/人元、陰陽）
+const MOUNTAINS = [
+  { name: "壬", degStart: 337.5, degEnd: 352.5, gua: 5, yuan: "地", yang: true },
+  { name: "子", degStart: 352.5, degEnd: 7.5,   gua: 5, yuan: "天", yang: false },
+  { name: "癸", degStart: 7.5,   degEnd: 22.5,  gua: 5, yuan: "人", yang: false },
+  { name: "丑", degStart: 22.5,  degEnd: 37.5,  gua: 3, yuan: "地", yang: false },
+  { name: "艮", degStart: 37.5,  degEnd: 52.5,  gua: 3, yuan: "天", yang: true },
+  { name: "寅", degStart: 52.5,  degEnd: 67.5,  gua: 3, yuan: "人", yang: true },
+  { name: "甲", degStart: 67.5,  degEnd: 82.5,  gua: 7, yuan: "地", yang: true },
+  { name: "卯", degStart: 82.5,  degEnd: 97.5,  gua: 7, yuan: "天", yang: false },
+  { name: "乙", degStart: 97.5,  degEnd: 112.5, gua: 7, yuan: "人", yang: false },
+  { name: "辰", degStart: 112.5, degEnd: 127.5, gua: 8, yuan: "地", yang: false },
+  { name: "巽", degStart: 127.5, degEnd: 142.5, gua: 8, yuan: "天", yang: true },
+  { name: "巳", degStart: 142.5, degEnd: 157.5, gua: 8, yuan: "人", yang: true },
+  { name: "丙", degStart: 157.5, degEnd: 172.5, gua: 4, yuan: "地", yang: true },
+  { name: "午", degStart: 172.5, degEnd: 187.5, gua: 4, yuan: "天", yang: false },
+  { name: "丁", degStart: 187.5, degEnd: 202.5, gua: 4, yuan: "人", yang: false },
+  { name: "未", degStart: 202.5, degEnd: 217.5, gua: 6, yuan: "地", yang: false },
+  { name: "坤", degStart: 217.5, degEnd: 232.5, gua: 6, yuan: "天", yang: true },
+  { name: "申", degStart: 232.5, degEnd: 247.5, gua: 6, yuan: "人", yang: true },
+  { name: "庚", degStart: 247.5, degEnd: 262.5, gua: 2, yuan: "地", yang: true },
+  { name: "酉", degStart: 262.5, degEnd: 277.5, gua: 2, yuan: "天", yang: false },
+  { name: "辛", degStart: 277.5, degEnd: 292.5, gua: 2, yuan: "人", yang: false },
+  { name: "戌", degStart: 292.5, degEnd: 307.5, gua: 1, yuan: "地", rough: false },
+  { name: "乾", degStart: 307.5, degEnd: 322.5, gua: 1, yuan: "天", yang: true },
+  { name: "亥", degStart: 322.5, degEnd: 337.5, gua: 1, yuan: "人", yang: true }
+];
+
+// 洛書九宮軌跡映射表 (0:中宮, 1:乾, 2:兌, 3:艮, 4:離, 5:坎, 6:坤, 7:震, 8:巽)
+const LUOSHUI_SEQ = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+
+// 九宮視覺顯示順序（風水常用上方為南、下方為北）
+// [巽(4), 離(9), 坤(2), 震(3), 中(5), 兌(7), 艮(8), 坎(1), 乾(6)]
+const DISPLAY_LAYOUT = [
+  { name: "東南", pos: 8 }, { name: "正南", pos: 4 }, { name: "西南", pos: 6 },
+  { name: "正東", pos: 7 }, { name: "中宮", pos: 0 }, { name: "正西", pos: 2 },
+  { name: "東北", pos: 3 }, { name: "正北", pos: 5 }, { name: "西北", pos: 1 }
+];
+
+// 八宅大遊年對應表（根據坐山卦決定的各方吉凶）
+const BAZHAI_MAP = {
+  5: { 5:"伏位", 4:"延年", 6:"絕命", 7:"天醫", 0:"--", 2:"生氣", 3:"五鬼", 1:"六煞", 8:"禍害" }, // 坎宅(坐北)
+  3: { 3:"伏位", 8:"絕命", 1:"天醫", 5:"五鬼", 0:"--", 6:"六煞", 4:"禍害", 7:"六煞", 2:"延年" }, // 艮宅(坐東北)
+  7: { 7:"伏位", 8:"延年", 6:"禍害", 3:"六煞", 0:"--", 2:"絕命", 5:"天醫", 4:"生氣", 1:"五鬼" }, // 震宅(坐東)
+  8: { 8:"伏位", 7:"延年", 4:"天醫", 2:"五鬼", 0:"--", 6:"禍害", 1:"生氣", 5:"絕命", 3:"六煞" }, // 巽宅(坐東南)
+  4: { 4:"伏位", 5:"延年", 8:"天醫", 1:"絕命", 0:"--", 3:"生氣", 2:"五鬼", 7:"禍害", 6:"六煞" }, // 離宅(坐南)
+  6: { 6:"伏位", 1:"延年", 5:"絕命", 2:"天醫", 0:"--", 4:"五鬼", 8:"六煞", 3:"禍害", 7:"生氣" }, // 坤宅(坐西南)
+  2: { 2:"伏位", 1:"生氣", 3:"延年", 6:"天醫", 0:"--", 5:"禍害", 4:"五鬼", 8:"絕命", 7:"六煞" }, // 兌宅(坐西)
+  1: { 1:"伏位", 6:"延年", 2:"生氣", 3:"天醫", 0:"--", 8:"六煞", 7:"五鬼", 4:"絕命", 5:"禍害" }  // 乾宅(坐西北)
+};
+
+// 飛星計算核心（順飛 / 逆飛）
+function flyStars(centerStar, isForward) {
+  let grid = new Array(9);
+  for (let i = 0; i < 9; i++) {
+    let targetPos = LUOSHUI_SEQ[i];
+    let star = isForward 
+      ? ((centerStar - 1 + i) % 9) + 1 
+      : ((centerStar - 1 - i) % 9 + 9) % 9 + 1;
+    grid[targetPos] = star;
+  }
+  return grid;
+}
+
+// 根據角度獲取二十四山資訊
+function getMountain(degree) {
+  let deg = (degree % 360 + 360) % 360;
+  for (let m of MOUNTAINS) {
+    if (m.degStart > m.degEnd) { // 跨越 0 度的子山
+      if (deg >= m.degStart || deg < m.degEnd) return m;
+    } else {
+      if (deg >= m.degStart && deg < m.degEnd) return m;
+    }
+  }
+  return MOUNTAINS[1]; // 預設子山
+}
+
+// 主執行邏輯
+function processFengShui() {
+  const facingDeg = parseFloat(document.getElementById('degree').value);
+  const yun = parseInt(document.getElementById('yun').value);
+  
+  if (isNaN(facingDeg)) {
+    alert("請輸入有效的角度！");
+    return;
+  }
+
+  // 1. 判斷向首與坐山
+  const facingMountain = getMountain(facingDeg);
+  const sittingDeg = (facingDeg + 180) % 360;
+  const sittingMountain = getMountain(sittingDeg);
+
+  // 2. 排運盤
+  const basePan = flyStars(yun, true);
+
+  // 3. 排山星 (坐山入中宮)
+  const mountainBaseStar = basePan[sittingMountain.gua]; // 坐山對應宮位上的運星
+  // 判斷陰陽順逆：根據運星所在宮位的對應天/地/人元陰陽
+  const mountainFlyDirection = checkFlyDirection(mountainBaseStar, sittingMountain.yuan);
+  const mountainPan = flyStars(mountainBaseStar, mountainFlyDirection);
+
+  // 4. 排向星 (向首入中宮)
+  const facingBaseStar = basePan[facingMountain.gua]; // 向首對應宮位上的運星
+  const facingFlyDirection = checkFlyDirection(facingBaseStar, facingMountain.yuan);
+  const facingPan = flyStars(facingBaseStar, facingFlyDirection);
+
+  // 5. 八宅吉凶
+  const bazhaiGua = sittingMountain.gua;
+  const bazhaiData = BAZHAI_MAP[bazhaiGua] || {};
+
+  // 6. 渲染介面
+  document.getElementById('summaryText').innerHTML = `
+    <strong>坐 ${sittingMountain.name} 山 (${sittingMountain.gua}宮) 向 ${facingMountain.name} 山</strong><br>
+    運星：${yun}運 | 山星中宮：${mountainBaseStar} | 向星中宮：${facingBaseStar}
+  `;
+
+  const board = document.getElementById('gridBoard');
+  board.innerHTML = '';
+
+  DISPLAY_LAYOUT.forEach(item => {
+    let pos = item.pos;
+    let mStar = mountainPan[pos];
+    let fStar = facingPan[pos];
+    let bStar = basePan[pos];
+    let bzName = bazhaiData[pos] || "--";
+    
+    let isJi = ["生氣", "延年", "天醫", "伏位"].includes(bzName);
+    let bzClass = isJi ? "ji" : (bzName === "--" ? "" : "xiong");
+
+    board.innerHTML += `
+      <div class="cell">
+        <div class="cell-header">
+          <span class="star-mountain">${mStar}</span>
+          <span class="star-facing">${fStar}</span>
+        </div>
+        <div class="cell-center ${bzClass}">${bzName}</div>
+        <div class="cell-footer">
+          <span>${item.name}</span>
+          <span class="star-base">${bStar}</span>
+        </div>
+      </div>
+    `;
+  });
+
+  document.getElementById('resultCard').style.display = 'block';
+}
+
+// 根據元運星與地元/天元/人元，判斷順飛(true)或逆飛(false)
+function checkFlyDirection(star, yuan) {
+  // 對應九宮原卦對應的三山元屬
+  const GUA_REF = {
+    1: { "地": "戌", "天": "乾", "人": "亥" },
+    2: { "地": "庚", "天": "酉", "人": "辛" },
+    3: { "地": "丑", "天": "艮", "人": "寅" },
+    4: { "地": "丙", "天": "午", "人": "丁" },
+    5: { "地": "壬", "天": "子", "人": "癸" }, // 五黃寄坤/艮宮，通常順逆依運或依坤卦
+    6: { "地": "未", "天": "坤", "人": "申" },
+    7: { "地": "甲", "天": "卯", "人": "乙" },
+    8: { "地": "辰", "天": "巽", "人": "巳" },
+    9: { "地": "丙", "天": "午", "人": "丁" }
+  };
+
+  let mName = GUA_REF[star] ? GUA_REF[star][yuan] : "子";
+  let mObj = MOUNTAINS.find(m => m.name === mName);
+  return mObj ? mObj.yang : true;
+}
+
+// 初始化執行一次
+window.onload = processFengShui;
+</script>
+</body>
+</html>
