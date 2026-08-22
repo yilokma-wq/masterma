@@ -110,49 +110,68 @@
 </div>
 
 <script>
+// 宮位顯示順序 (0:東南, 1:正南, 2:西南, 3:正東, 4:中宮, 5:正西, 6:東北, 7:正北, 8:西北)
 const PALACE_NAMES = ["東南 (巽)", "正南 (離)", "西南 (坤)", "正東 (震)", "中宮", "正西 (兌)", "東北 (艮)", "正北 (坎)", "西北 (乾)"];
-const LUOSHUI_GRID_MAP = [4, 8, 5, 6, 1, 7, 2, 3, 0];
 
-const MOUNTAINS = [
-    { name: "壬山丙向", palace: 7, facingPalace: 1, mountainBase: 4, mountainForward: false, facingBase: 3, facingForward: true },
-    { name: "子山午向", palace: 7, facingPalace: 1, mountainBase: 4, mountainForward: false, facingBase: 3, facingForward: false },
-    { name: "癸山丁向", palace: 7, facingPalace: 1, mountainBase: 4, mountainForward: false, facingBase: 3, facingForward: false },
-    { name: "丑山未向", palace: 6, facingPalace: 2, mountainBase: 2, mountainForward: false, facingBase: 5, facingForward: false },
-    { name: "艮山坤向", palace: 6, facingPalace: 2, mountainBase: 2, mountainForward: true, facingBase: 5, facingForward: true },
-    { name: "寅山申向", palace: 6, facingPalace: 2, mountainBase: 2, mountainForward: true, facingBase: 5, facingForward: true },
-    { name: "甲山庚向", palace: 3, facingPalace: 5, mountainBase: 6, mountainForward: true, facingBase: 1, facingForward: true },
-    { name: "卯山酉向", palace: 3, facingPalace: 5, mountainBase: 6, mountainForward: false, facingBase: 1, facingForward: false },
-    { name: "乙山辛向", palace: 3, facingPalace: 5, mountainBase: 6, mountainForward: false, facingBase: 1, facingForward: false },
-    { name: "辰山戌向", palace: 0, facingPalace: 8, mountainBase: 7, mountainForward: false, facingBase: 9, facingForward: false },
-    { name: "巽山乾向", palace: 0, facingPalace: 8, mountainBase: 7, mountainForward: true, facingBase: 9, facingForward: true },
-    { name: "巳山亥向", palace: 0, facingPalace: 8, mountainBase: 7, mountainForward: true, facingBase: 9, facingForward: true },
-    { name: "丙山壬向", palace: 1, facingPalace: 7, mountainBase: 3, mountainForward: true, facingBase: 4, facingForward: false },
-    { name: "午山子向", palace: 1, facingPalace: 7, mountainBase: 3, mountainForward: false, facingBase: 4, facingForward: false },
-    { name: "丁山癸向", palace: 1, facingPalace: 7, mountainBase: 3, mountainForward: false, facingBase: 4, facingForward: false },
-    { name: "未山丑向", palace: 2, facingPalace: 6, mountainBase: 5, mountainForward: false, facingBase: 2, facingForward: false },
-    { name: "坤山艮向", palace: 2, facingPalace: 6, mountainBase: 5, mountainForward: true, facingBase: 2, facingForward: true },
-    { name: "申山寅向", palace: 2, facingPalace: 6, mountainBase: 5, mountainForward: true, facingBase: 2, facingForward: true },
-    { name: "庚山甲向", palace: 5, facingPalace: 3, mountainBase: 1, mountainForward: true, facingBase: 6, facingForward: true },
-    { name: "酉山卯向", palace: 5, facingPalace: 3, mountainBase: 1, mountainForward: false, facingBase: 6, facingForward: false },
-    { name: "辛山乙向", palace: 5, facingPalace: 3, mountainBase: 1, mountainForward: false, facingBase: 6, facingForward: false },
-    { name: "戌山辰向", palace: 8, facingPalace: 0, mountainBase: 9, mountainForward: false, facingBase: 7, facingForward: false },
-    { name: "乾山巽向", palace: 8, facingPalace: 0, mountainBase: 9, mountainForward: true, facingBase: 7, facingForward: true },
-    { name: "亥山巳向", palace: 8, facingPalace: 0, mountainBase: 9, mountainForward: true, facingBase: 7, facingForward: true }
-];
+// 洛書九宮順飛順序對應到網格索引：中(4) -> 乾(8) -> 兌(5) -> 艮(6) -> 離(1) -> 坎(7) -> 坤(2) -> 震(3) -> 巽(0)
+const LUOSHUI_PATH = [4, 8, 5, 6, 1, 7, 2, 3, 0];
 
-const BAZHAI_MAP = {
-    7: ["生氣", "延年", "絕命", "天醫", "", "禍害", "五鬼", "伏位", "六煞"],
-    1: ["天醫", "伏位", "六煞", "生氣", "", "五鬼", "禍害", "延年", "絕命"],
-    3: ["延年", "生氣", "禍害", "伏位", "", "絕命", "六煞", "天醫", "五鬼"],
-    0: ["伏位", "天醫", "五鬼", "延年", "", "六煞", "絕命", "生氣", "禍害"],
-    8: ["禍害", "絕命", "延年", "五鬼", "", "生氣", "天醫", "六煞", "伏位"],
-    2: ["五鬼", "六煞", "伏位", "禍害", "", "天醫", "生氣", "絕命", "延年"],
-    6: ["絕命", "禍害", "生氣", "六煞", "", "延年", "伏位", "五鬼", "天醫"],
-    5: ["六煞", "五鬼", "天醫", "絕命", "", "伏位", "延年", "禍害", "生氣"]
+// 三元龍陰陽屬性 (1:陽順飛, -1:陰逆飛) [地元龍, 天元龍, 人元龍]
+const DRAGON_YIN_YANG = {
+    1: [ 1, -1, -1], // 壬(陽) 子(陰) 癸(陰)
+    2: [-1,  1,  1], // 丑(陰) 艮(陽) 寅(陽)
+    3: [ 1, -1, -1], // 甲(陽) 卯(陰) 乙(陰)
+    4: [-1,  1,  1], // 辰(陰) 巽(陽) 巳(陽)
+    5: [ 1,  1,  1], // 五黃寄坤二宮 (丑陰,艮陽,寅陽 / 未陰,坤陽,申陽)
+    6: [ 1,  1, -1], // 戌(陽) 乾(陽) 亥(陰)
+    7: [ 1, -1, -1], // 庚(陽) 酉(陰) 辛(陰)
+    8: [-1,  1,  1], // 未(陰) 坤(陽) 申(陽)
+    9: [ 1, -1, -1]  // 丙(陽) 午(陰) 丁(陰)
 };
 
+// 24山對應宮位與龍別 (0:地元龍, 1:天元龍, 2:人元龍)
+const MOUNTAINS = [
+    { name: "壬山丙向", palace: 7, facingPalace: 1, dragonType: 0 },
+    { name: "子山午向", palace: 7, facingPalace: 1, dragonType: 1 },
+    { name: "癸山丁向", palace: 7, facingPalace: 1, dragonType: 2 },
+    { name: "丑山未向", palace: 6, facingPalace: 2, dragonType: 0 },
+    { name: "艮山坤向", palace: 6, facingPalace: 2, dragonType: 1 },
+    { name: "寅山申向", palace: 6, facingPalace: 2, dragonType: 2 },
+    { name: "甲山庚向", palace: 3, facingPalace: 5, dragonType: 0 },
+    { name: "卯山酉向", palace: 3, facingPalace: 5, dragonType: 1 },
+    { name: "乙山辛向", palace: 3, facingPalace: 5, dragonType: 2 },
+    { name: "辰山戌向", palace: 0, facingPalace: 8, dragonType: 0 },
+    { name: "巽山乾向", palace: 0, facingPalace: 8, dragonType: 1 },
+    { name: "巳山亥向", palace: 0, facingPalace: 8, dragonType: 2 },
+    { name: "丙山壬向", palace: 1, facingPalace: 7, dragonType: 0 },
+    { name: "午山子向", palace: 1, facingPalace: 7, dragonType: 1 },
+    { name: "丁山癸向", palace: 1, facingPalace: 7, dragonType: 2 },
+    { name: "未山丑向", palace: 2, facingPalace: 6, dragonType: 0 },
+    { name: "坤山艮向", palace: 2, facingPalace: 6, dragonType: 1 },
+    { name: "申山寅向", palace: 2, facingPalace: 6, dragonType: 2 },
+    { name: "庚山甲向", palace: 5, facingPalace: 3, dragonType: 0 },
+    { name: "酉山卯向", palace: 5, facingPalace: 3, dragonType: 1 },
+    { name: "辛山乙向", palace: 5, facingPalace: 3, dragonType: 2 },
+    { name: "戌山辰向", palace: 8, facingPalace: 0, dragonType: 0 },
+    { name: "乾山巽向", palace: 8, facingPalace: 0, dragonType: 1 },
+    { name: "亥山巳向", palace: 8, facingPalace: 0, dragonType: 2 }
+];
+
+// 八宅遊年 (中宮 4 保持空白 "")
+const BAZHAI_MAP = {
+    7: ["生氣", "延年", "絕命", "天醫", "", "禍害", "五鬼", "伏位", "六煞"], // 坎宅
+    1: ["天醫", "伏位", "六煞", "生氣", "", "五鬼", "禍害", "延年", "絕命"], // 離宅
+    3: ["延年", "生氣", "禍害", "伏位", "", "絕命", "六煞", "天醫", "五鬼"], // 震宅
+    0: ["伏位", "天醫", "五鬼", "延年", "", "六煞", "絕命", "生氣", "禍害"], // 巽宅
+    8: ["禍害", "絕命", "延年", "五鬼", "", "生氣", "天醫", "六煞", "伏位"], // 乾宅
+    2: ["五鬼", "六煞", "伏位", "禍害", "", "天醫", "生氣", "絕命", "延年"], // 坤宅
+    6: ["絕命", "禍害", "生氣", "六煞", "", "延年", "伏位", "五鬼", "天醫"], // 艮宅
+    5: ["六煞", "五鬼", "天醫", "絕命", "", "伏位", "延年", "禍害", "生氣"]  // 兌宅
+};
+
+// 飛星算法 (入中星 + 順逆方向)
 function flyStars(centerStar, isForward) {
-    let gridResult = new Array(9);
+    let result = new Array(9);
     for (let step = 0; step < 9; step++) {
         let star;
         if (isForward) {
@@ -161,12 +180,20 @@ function flyStars(centerStar, isForward) {
             star = (centerStar - 1 - step) % 9;
             if (star <= 0) star += 9;
         }
-        let uiIdx = LUOSHUI_GRID_MAP[step];
-        gridResult[uiIdx] = star;
+        let gridIdx = LUOSHUI_PATH[step];
+        result[gridIdx] = star;
     }
-    return gridResult;
+    return result;
 }
 
+// 三元龍陰陽判定
+function getYinYang(star, dragonType) {
+    let targetStar = star;
+    if (targetStar === 5) targetStar = 2; // 五黃寄坤宮
+    return DRAGON_YIN_YANG[targetStar][dragonType];
+}
+
+// 計算流年星入中
 function getAnnualCenterStar(year) {
     let rem = year % 9;
     let star = (11 - rem) % 9;
@@ -192,13 +219,27 @@ function calculate() {
     const annualYear = parseInt(document.getElementById("annualYear").value);
     const selectedM = MOUNTAINS[mIdx];
 
+    // 1. 運盤 (運數入中宮順飛)
     const periodStars = flyStars(period, true);
-    const mountainStars = flyStars(selectedM.mountainBase, selectedM.mountainForward);
-    const facingStars = flyStars(selectedM.facingBase, selectedM.facingForward);
+
+    // 2. 山星盤 (取坐山宮位之運星入中)
+    const mountainBaseStar = periodStars[selectedM.palace];
+    const isMountainForward = getYinYang(mountainBaseStar, selectedM.dragonType) === 1;
+    const mountainStars = flyStars(mountainBaseStar, isMountainForward);
+
+    // 3. 向星盤 (取向首宮位之運星入中)
+    const facingBaseStar = periodStars[selectedM.facingPalace];
+    const isFacingForward = getYinYang(facingBaseStar, selectedM.dragonType) === 1;
+    const facingStars = flyStars(facingBaseStar, isFacingForward);
+
+    // 4. 流年星盤
     const annualCenter = getAnnualCenterStar(annualYear);
     const annualStars = flyStars(annualCenter, true);
+
+    // 5. 八宅遊年
     const bazhaiList = BAZHAI_MAP[selectedM.palace];
 
+    // 渲染 UI
     const gridEl = document.getElementById("grid");
     gridEl.innerHTML = "";
     let analysisHTML = "";
@@ -232,7 +273,7 @@ function calculate() {
             analysisHTML += `<div class="analysis-card">
                 <div class="analysis-title">${PALACE_NAMES[i]} - 五黃廉貞土煞</div>
                 <p>五黃主疾病凶災。<br>
-                <span style="color:#d9534f;">💡 解法：</span>此方宜靜不宜動，嚴禁動土。擺放六帝錢或銅葫蘆化解。</p>
+                <span style="color:#d9534f;">💡 化解方法：</span>此方宜靜不宜動，嚴禁動土。可擺放六帝錢或純銅葫蘆洩去土煞氣。</p>
             </div>`;
         }
     }
