@@ -83,8 +83,8 @@
                 <option value="5">五運 (1944-1963)</option>
                 <option value="6">六運 (1964-1983)</option>
                 <option value="7">七運 (1984-2003)</option>
-                <option value="8">八運 (2004-2023)</option>
-                <option value="9" selected>九運 (2024-2043)</option>
+                <option value="8" selected>八運 (2004-2023)</option>
+                <option value="9">九運 (2024-2043)</option>
             </select>
 
             <label>24山坐向：</label>
@@ -114,85 +114,78 @@
 </div>
 
 <script>
-// 宮位定義：固定標準順序 [0:巽/東南, 1:離/正南, 2:坤/西南, 3:震/正東, 4:中宮, 5:兌/正西, 6:艮/東北, 7:坎/正北, 8:乾/西北]
+// 宮位固定顯示順序：[0:東南, 1:正南, 2:西南, 3:正東, 4:中宮, 5:正西, 6:東北, 7:正北, 8:西北]
 const PALACE_NAMES = ["東南 (巽)", "正南 (離)", "西南 (坤)", "正東 (震)", "中宮", "正西 (兌)", "東北 (艮)", "正北 (坎)", "西北 (乾)"];
-const PALACE_GUA = ["巽", "離", "坤", "震", "中", "兌", "艮", "坎", "乾"];
 
-// 洛書順飛路線：中(4) -> 乾(8) -> 兌(5) -> 艮(6) -> 離(1) -> 坎(7) -> 坤(2) -> 震(3) -> 巽(0)
-const LUOSHUI_FLY_ORDER = [4, 8, 5, 6, 1, 7, 2, 3, 0];
+// 洛書九宮軌跡對應 UI 陣列索引 (中5, 乾6, 兌7, 艮8, 離9, 坎1, 坤2, 震3, 巽4)
+const LUOSHUI_TO_GRID = [4, 8, 5, 6, 1, 7, 2, 3, 0];
 
-// 24山配置 (包含所屬宮位、三元龍天天地人、陰陽)
-// 陰陽規則：陽(+)順飛，陰(-)逆飛
+// 24山坐向資料 (palace 代表坐山宮位索引，facingPalace 代表向首宮位索引)
 const MOUNTAINS = [
-    { name: "壬山丙向", palace: 7, facingPalace: 1, yinYang: 1 },  // 坎宮 天干壬 (陽)
-    { name: "子山午向", palace: 7, facingPalace: 1, yinYang: -1 }, // 坎宮 地支子 (陰)
-    { name: "癸山丁向", palace: 7, facingPalace: 1, yinYang: -1 }, // 坎宮 天干癸 (陰)
-    { name: "丑山未向", palace: 6, facingPalace: 2, yinYang: -1 }, // 艮宮 地支丑 (陰)
-    { name: "艮山坤向", palace: 6, facingPalace: 2, yinYang: 1 },  // 艮宮 卦象艮 (陽)
-    { name: "寅山申向", palace: 6, facingPalace: 2, yinYang: 1 },  // 艮宮 地支寅 (陽)
-    { name: "甲山庚向", palace: 3, facingPalace: 5, yinYang: 1 },  // 震宮 天干甲 (陽)
-    { name: "卯山酉向", palace: 3, facingPalace: 5, yinYang: -1 }, // 震宮 地支卯 (陰)
-    { name: "乙山辛向", palace: 3, facingPalace: 5, yinYang: -1 }, // 震宮 天干乙 (陰)
-    { name: "辰山戌向", palace: 0, facingPalace: 8, yinYang: -1 }, // 巽宮 地支辰 (陰)
-    { name: "巽山乾向", palace: 0, facingPalace: 8, yinYang: 1 },  // 巽宮 卦象巽 (陽)
-    { name: "巳山亥向", palace: 0, facingPalace: 8, yinYang: 1 },  // 巽宮 地支巳 (陽)
-    { name: "丙山壬向", palace: 1, facingPalace: 7, yinYang: 1 },  // 離宮 天干丙 (陽)
-    { name: "午山子向", palace: 1, facingPalace: 7, yinYang: -1 }, // 離宮 地支午 (陰)
-    { name: "丁山癸向", palace: 1, facingPalace: 7, yinYang: -1 }, // 離宮 天干丁 (陰)
-    { name: "未山丑向", palace: 2, facingPalace: 6, yinYang: -1 }, // 坤宮 地支未 (陰)
-    { name: "坤山艮向", palace: 2, facingPalace: 6, yinYang: 1 },  // 坤宮 卦象坤 (陽)
-    { name: "申山寅向", palace: 2, facingPalace: 6, yinYang: 1 },  // 坤宮 地支申 (陽)
-    { name: "庚山甲向", palace: 5, facingPalace: 3, yinYang: 1 },  // 兌宮 天干庚 (陽)
-    { name: "酉山卯向", palace: 5, facingPalace: 3, yinYang: -1 }, // 兌宮 地支酉 (陰)
-    { name: "辛山乙向", palace: 5, facingPalace: 3, yinYang: -1 }, // 兌宮 天干辛 (陰)
-    { name: "戌山辰向", palace: 8, facingPalace: 0, yinYang: -1 }, // 乾宮 地支戌 (陰)
-    { name: "乾山巽向", palace: 8, facingPalace: 0, yinYang: 1 },  // 乾宮 卦象乾 (陽)
-    { name: "亥山巳向", palace: 8, facingPalace: 0, yinYang: 1 }   // 乾宮 地支亥 (陽)
+    { name: "壬山丙向", palace: 7, facingPalace: 1, yinYang: 1 },  // 坎宮
+    { name: "子山午向", palace: 7, facingPalace: 1, yinYang: -1 },
+    { name: "癸山丁向", palace: 7, facingPalace: 1, yinYang: -1 },
+    { name: "丑山未向", palace: 6, facingPalace: 2, yinYang: -1 }, // 艮宮
+    { name: "艮山坤向", palace: 6, facingPalace: 2, yinYang: 1 },
+    { name: "寅山申向", palace: 6, facingPalace: 2, yinYang: 1 },
+    { name: "甲山庚向", palace: 3, facingPalace: 5, yinYang: 1 },  // 震宮
+    { name: "卯山酉向", palace: 3, facingPalace: 5, yinYang: -1 },
+    { name: "乙山辛向", palace: 3, facingPalace: 5, yinYang: -1 },
+    { name: "辰山戌向", palace: 0, facingPalace: 8, yinYang: -1 }, // 巽宮
+    { name: "巽山乾向", palace: 0, facingPalace: 8, yinYang: 1 },
+    { name: "巳山亥向", palace: 0, facingPalace: 8, yinYang: 1 },
+    { name: "丙山壬向", palace: 1, facingPalace: 7, yinYang: 1 },  // 離宮
+    { name: "午山子向", palace: 1, facingPalace: 7, yinYang: -1 },
+    { name: "丁山癸向", palace: 1, facingPalace: 7, yinYang: -1 },
+    { name: "未山丑向", palace: 2, facingPalace: 6, yinYang: -1 }, // 坤宮
+    { name: "坤山艮向", palace: 2, facingPalace: 6, yinYang: 1 },
+    { name: "申山寅向", palace: 2, facingPalace: 6, yinYang: 1 },
+    { name: "庚山甲向", palace: 5, facingPalace: 3, yinYang: 1 },  // 兌宮
+    { name: "酉山卯向", palace: 5, facingPalace: 3, yinYang: -1 },
+    { name: "辛山乙向", palace: 5, facingPalace: 3, yinYang: -1 },
+    { name: "戌山辰向", palace: 8, facingPalace: 0, yinYang: -1 }, // 乾宮
+    { name: "乾山巽向", palace: 8, facingPalace: 0, yinYang: 1 },
+    { name: "亥山巳向", palace: 8, facingPalace: 0, yinYang: 1 }
 ];
 
-// 八宅遊年對應表 (按坐山卦象)
+// 八宅遊年對應 (索引 0:東南, 1:正南, 2:西南, 3:正東, 4:中宮(空), 5:正西, 6:東北, 7:正北, 8:西北)
 const BAZHAI_MAP = {
-    "坎": ["生氣", "延年", "絕命", "天醫", "伏位", "禍害", "五鬼", "伏位", "六煞"],
-    "離": ["天醫", "伏位", "六煞", "生氣", "伏位", "五鬼", "禍害", "延年", "絕命"],
-    "震": ["延年", "生氣", "禍害", "伏位", "伏位", "絕命", "六煞", "天醫", "五鬼"],
-    "巽": ["伏位", "天醫", "五鬼", "延年", "伏位", "六煞", "絕命", "生氣", "禍害"],
-    "乾": ["禍害", "絕命", "延年", "五鬼", "伏位", "生氣", "天醫", "六煞", "伏位"],
-    "坤": ["五鬼", "六煞", "伏位", "禍害", "伏位", "天醫", "生氣", "絕命", "延年"],
-    "艮": ["絕命", "禍害", "生氣", "六煞", "伏位", "延年", "伏位", "五鬼", "天醫"],
-    "兌": ["六煞", "五鬼", "天醫", "絕命", "伏位", "伏位", "延年", "禍害", "生氣"]
+    7: ["生氣", "延年", "絕命", "天醫", "", "禍害", "五鬼", "伏位", "六煞"], // 坎宅 (壬子癸) -> 正北(7)為伏位
+    1: ["天醫", "伏位", "六煞", "生氣", "", "五鬼", "禍害", "延年", "絕命"], // 離宅 (丙午丁)
+    3: ["延年", "生氣", "禍害", "伏位", "", "絕命", "六煞", "天醫", "五鬼"], // 震宅 (甲卯乙)
+    0: ["伏位", "天醫", "五鬼", "延年", "", "六煞", "絕命", "生氣", "禍害"], // 巽宅 (辰巽巳)
+    8: ["禍害", "絕命", "延年", "五鬼", "", "生氣", "天醫", "六煞", "伏位"], // 乾宅 (戌乾亥)
+    2: ["五鬼", "六煞", "伏位", "禍害", "", "天醫", "生氣", "絕命", "延年"], // 坤宅 (未坤申)
+    6: ["絕命", "禍害", "生氣", "六煞", "", "延年", "伏位", "五鬼", "天醫"], // 艮宅 (丑艮寅)
+    5: ["六煞", "五鬼", "天醫", "絕命", "", "伏位", "延年", "禍害", "生氣"]  // 兌宅 (庚酉辛)
 };
 
-// 正確的飛星演算法 (入中宮後按洛書順序分布)
+// 飛星計算函數 (傳入入中星與順逆)
 function flyStars(centerStar, isForward) {
     let result = new Array(9);
     for (let step = 0; step < 9; step++) {
-        let currentStar;
+        let star;
         if (isForward) {
-            currentStar = (centerStar - 1 + step) % 9 + 1;
+            star = (centerStar - 1 + step) % 9 + 1;
         } else {
-            currentStar = (centerStar - 1 - step) % 9;
-            if (currentStar < 0) currentStar += 9;
-            currentStar += 1;
+            star = (centerStar - 1 - step) % 9;
+            if (star <= 0) star += 9;
         }
-        let targetPalace = LUOSHUI_FLY_ORDER[step];
-        result[targetPalace] = currentStar;
+        let gridIndex = LUOSHUI_TO_GRID[step];
+        result[gridIndex] = star;
     }
     return result;
 }
 
-// 精確流年紫白星計算公式 (1900-2099)
+// 嚴格流年紫白星演算法
 function getAnnualCenterStar(year) {
-    let sum = year.toString().split('').reduce((a, b) => parseInt(a) + parseInt(b), 0);
-    while (sum >= 10) {
-        sum = sum.toString().split('').reduce((a, b) => parseInt(a) + parseInt(b), 0);
-    }
-    let centerStar = 11 - sum;
-    if (centerStar > 9) centerStar -= 9;
-    if (centerStar <= 0) centerStar += 9;
-    return centerStar;
+    // 玄空紫白飛星入中公式：(11 - (year % 9)) % 9
+    let rem = year % 9;
+    let star = (11 - rem) % 9;
+    if (star === 0) star = 9;
+    return star;
 }
 
-// 初始化選單
 function init() {
     const select = document.getElementById("mountainFacing");
     select.innerHTML = "";
@@ -211,26 +204,25 @@ function calculate() {
     const annualYear = parseInt(document.getElementById("annualYear").value);
     const selectedM = MOUNTAINS[mIdx];
 
-    // 1. 運星盤 (順飛)
+    // 1. 運星盤 (以運數入中，順飛)
     const periodStars = flyStars(period, true);
 
-    // 2. 山星盤 (取坐山對應宮位之運星入中)
+    // 2. 山星盤 (取坐山所在宮位的運星入中)
     const mountainBaseStar = periodStars[selectedM.palace];
     const isMountainForward = selectedM.yinYang >= 0;
     const mountainStars = flyStars(mountainBaseStar, isMountainForward);
 
-    // 3. 向星盤 (取向山對應宮位之運星入中)
+    // 3. 向星盤 (取向首所在宮位的運星入中)
     const facingBaseStar = periodStars[selectedM.facingPalace];
-    const isFacingForward = selectedM.yinYang < 0; // 坐向陰陽相反
+    const isFacingForward = selectedM.yinYang < 0; // 坐向陰陽相對
     const facingStars = flyStars(facingBaseStar, isFacingForward);
 
-    // 4. 流年星盤 (流年星入中，一律順飛)
+    // 4. 流年星盤 (流年入中，順飛)
     const annualCenter = getAnnualCenterStar(annualYear);
     const annualStars = flyStars(annualCenter, true);
 
-    // 5. 八宅
-    const sitGua = PALACE_GUA[selectedM.palace] === "中" ? "坤" : PALACE_GUA[selectedM.palace];
-    const bazhaiList = BAZHAI_MAP[sitGua] || BAZHAI_MAP["乾"];
+    // 5. 八宅遊年 (取坐山宮位)
+    const bazhaiList = BAZHAI_MAP[selectedM.palace];
 
     // 渲染 UI
     const gridEl = document.getElementById("grid");
@@ -262,17 +254,20 @@ function calculate() {
         `;
         gridEl.appendChild(cell);
 
-        // 分析與斷語邏輯（略，保持吉凶批斷）
+        // 簡化批斷與化解提示
         if (fStar === 5 || aStar === 5) {
             analysisHTML += `<div class="analysis-card">
-                <div class="analysis-title">${PALACE_NAMES[i]} - 注意五黃廉貞煞</div>
-                <p>此方位有五黃凶星（向星 ${fStar} / 流年星 ${aStar}），主意外與病痛。<br>
-                <span style="color:#d9534f;">💡 解決方案：</span>宜放六帝錢或銅葫蘆化解，切忌動土。</p>
+                <div class="analysis-title">${PALACE_NAMES[i]} - 五黃廉貞土煞 (向星:${fStar} / 流年:${aStar})</div>
+                <p>五黃主疾病、凶災與破財。<br>
+                <span style="color:#d9534f;">💡 化解方法：</span>此方宜靜不宜動，嚴禁動土鑽牆。可擺放六帝錢或純銅葫蘆洩去土煞氣。</p>
             </div>`;
         }
     }
 
-    if (!analysisHTML) analysisHTML = "<p>此格局整體氣場平穩，無極端凶煞。</p>";
+    if (!analysisHTML) {
+        analysisHTML = "<p>此格局各宮位星耀組合平穩，無特殊極凶之煞氣。</p>";
+    }
+
     document.getElementById("analysisResult").innerHTML = analysisHTML;
 }
 
